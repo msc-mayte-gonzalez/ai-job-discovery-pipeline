@@ -46,6 +46,13 @@ Claude is used only where judgment is useful: evaluating whether my past experie
 
 Each evaluated role returns a consistent set of fields such as match score, recommendation, transferable strengths, genuine gaps, risk factors, and a short fit narrative.
 
+## Built with AI
+
+I built this system using **Claude as a coding and debugging collaborator**.
+
+I defined the problem, workflow architecture, filtering rules, edge cases, and product decisions, while using Claude to help write and troubleshoot JavaScript, API requests, and n8n logic.
+
+The project became a practical way to extend what I could build without pretending I had skills I didn't yet have.
 
 ## Workflow overview
 
