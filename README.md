@@ -67,6 +67,13 @@ Current limitations include:
 
 If I continued developing it, I would add better source-health monitoring, clearer confidence indicators for incomplete job data, and automated tests for the filtering and parsing logic.
 
+## Explore the demo
+
+[`workflow-demo.json`](workflow-demo.json) is a sanitized, representative n8n workflow showing the core architecture without the full production implementation.
+
+To inspect it, download the JSON and import it into n8n. Credentials and personal configuration have been replaced with placeholders.
+
+
 ## Workflow overview
 
 ![n8n workflow overview](Workflow-overview.png)
