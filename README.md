@@ -28,6 +28,25 @@ I built this system to search by **underlying capability rather than title alone
 
 Keeping deterministic logic before the AI step reduces unnecessary API calls and keeps normal operating cost around **$1.50–3 CAD/month**.
 
+## Key design decisions
+
+### Deterministic before AI
+
+Title filtering, location filtering, and deduplication happen before Claude is called. These decisions don't require an LLM, so handling them with rules makes the workflow cheaper and more predictable.
+
+### Two-layer deduplication
+
+Jobs are checked by both **URL** and **company + title**, which catches reposted roles even when their URLs change.
+
+### AI for interpretation
+
+Claude is used only where judgment is useful: evaluating whether my past experience demonstrates the underlying capabilities a role requires, even when the job title is unfamiliar.
+
+### Structured outputs
+
+Each evaluated role returns a consistent set of fields such as match score, recommendation, transferable strengths, genuine gaps, risk factors, and a short fit narrative.
+
+
 ## Workflow overview
 
 ![n8n workflow overview](Workflow-overview.png)
