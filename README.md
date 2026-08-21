@@ -10,6 +10,12 @@ This repository contains a **sanitized representative version** of the workflow.
 
 The production system monitors 41 career sites across multiple ATS platforms. The public demo includes only a small subset of integrations to show the core architecture, filtering logic, AI matching, and output flow without publishing the full production implementation.
 
+## Why I built it
+
+My background spans scientific research, UX research, product work, and customer-facing work, so relevant opportunities don't always share the same job title.
+
+I built this system to search by **underlying capability rather than title alone**, while reducing the manual work of repeatedly checking dozens of company career pages.
+
 ## How it works
 
 1. Fetches job postings from multiple career platforms
