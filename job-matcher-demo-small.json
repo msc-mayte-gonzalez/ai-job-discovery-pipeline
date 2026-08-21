@@ -1,0 +1,825 @@
+{
+  "name": "AI Job Discovery Pipeline - Public Demo",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 12,18 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -900,
+        0
+      ],
+      "id": "5eed51e0-23fb-40a6-99dc-dc0fdab4715a",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// DEMO ONLY: replace this with your own structured profile.\nconst cv_graph = {\n  identity: {\n    title: \"Example candidate\",\n    framing: \"Multidisciplinary profile spanning research, product, and customer-facing work.\"\n  },\n  what_i_have_actually_done: {\n    product_work: [\"Defined problems and influenced product decisions\"],\n    customer_work: [\"Worked directly with users/customers to understand needs\"],\n    research_work: [\"Used qualitative and quantitative evidence to guide decisions\"]\n  },\n  evidence_of_impact: [\"Add 2-3 quantified outcomes here\"],\n  skills: {\n    methods: [\"user research\", \"product discovery\"],\n    tools: [\"analytics\", \"prototyping\", \"automation\"]\n  },\n  role_fit_signals: {\n    strong_fit: [\"roles matching demonstrated capabilities\"],\n    adjacent_fit: [\"roles where experience transfers\"]\n  }\n};\n\nreturn [{ json: { cv_graph } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -700,
+        0
+      ],
+      "id": "029ff4c9-6e1e-4184-a814-7a16fe05adb8",
+      "name": "Candidate Profile (Demo)"
+    },
+    {
+      "parameters": {
+        "url": "https://api.lever.co/v0/postings/deepgenomics?mode=json&location=Toronto%2C%20Ontario",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -450,
+        -250
+      ],
+      "id": "c7e0f400-52f9-4450-938b-03916a8eff94",
+      "name": "Lever API - Example Source",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const jobs = $input.all().map(item => item.json);\nreturn jobs.map(job => ({\n  json: {\n    company: \"Deep Genomics\",\n    source: \"Lever\",\n    title: job.text || \"\",\n    url: job.hostedUrl || \"\",\n    location: job.categories?.location || \"not specified\",\n    description: [job.descriptionPlain || \"\", ...(job.lists || []).map(l => l.content || \"\")].join(\" \").substring(0, 4000)\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        -250
+      ],
+      "id": "07947f37-37bc-47f7-94ed-28af56a5ca37",
+      "name": "Normalize - Lever"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { company: \"Recursion\", board_id: \"recursionpharmaceuticals\" } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -450,
+        0
+      ],
+      "id": "9bb63fcd-f549-414f-9c95-8edc02d633b9",
+      "name": "Greenhouse - Example Company"
+    },
+    {
+      "parameters": {
+        "url": "=https://boards-api.greenhouse.io/v1/boards/{{ $json.board_id }}/jobs?content=true",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -200,
+        0
+      ],
+      "id": "91d59b1e-3f2a-43a2-9777-d79467470f35",
+      "name": "Greenhouse Fetch",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const company = $('Greenhouse - Example Company').first().json.company;\nconst jobs = $input.first().json.jobs || [];\nreturn jobs.map(job => ({\n  json: {\n    company,\n    source: \"Greenhouse\",\n    title: job.title || \"\",\n    url: job.absolute_url || \"\",\n    location: job.location?.name || \"not specified\",\n    description: (job.content || \"\").replace(/<[^>]*>/g, \" \").replace(/\\s+/g, \" \").trim().substring(0, 4000)\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        50,
+        0
+      ],
+      "id": "2b08e383-6543-4ded-95ea-dc94cb192c42",
+      "name": "Normalize - Greenhouse"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/scrape",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"url\": \"https://clarius.com/about/careers/\",\n  \"waitFor\": 8000,\n  \"elements\": [{\"selector\": \"a.comeet-position\"}]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -450,
+        250
+      ],
+      "id": "2a66c23f-1996-44c8-a1a0-a62981083dc4",
+      "name": "Browserless - Example JS Site",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = $input.first().json.data?.[0]?.results || [];\nreturn results.map(item => {\n  const lines = (item.text || \"\").split(\"\\n\").map(x => x.trim()).filter(Boolean);\n  const href = item.attributes?.find(a => a.name === \"href\")?.value || \"\";\n  return { json: {\n    company: \"Clarius\",\n    source: \"Browserless / Comeet\",\n    title: lines[0] || \"\",\n    url: href.startsWith(\"//\") ? \"https:\" + href : href,\n    location: lines[1] || \"not specified\",\n    description: \"Partial listing from a JavaScript-rendered careers page. See source URL for full description.\"\n  }};\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        250
+      ],
+      "id": "3f663c6d-e197-4595-adb6-fbe475ef2515",
+      "name": "Normalize - Browserless"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        300,
+        -100
+      ],
+      "id": "242b5a8a-bf39-4b3c-ba74-0570df74f40b",
+      "name": "Merge API Sources"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        500,
+        0
+      ],
+      "id": "51f1a156-6079-4f0e-89e9-b53af613bda8",
+      "name": "Merge + Browserless"
+    },
+    {
+      "parameters": {
+        "jsCode": "const cv_graph = $('Candidate Profile (Demo)').first().json.cv_graph;\nreturn $input.all()\n  .filter(item => (item.json.title || \"\").trim().length > 0)\n  .map(item => ({ json: { ...item.json, cv_graph } }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        0
+      ],
+      "id": "ef050a32-bc76-4b09-93b5-4ac99b192d78",
+      "name": "Attach Profile + Basic Cleanup"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Representative demo only. Production workflow uses a much larger bilingual rule set.\nconst excluded = [\"engineer\", \"developer\", \"accountant\", \"nurse\", \"sales\", \"intern\"];\nconst exceptions = [\"ux engineer\"]; // example of how exceptions can override broad rules\n\nreturn $input.all().filter(item => {\n  const title = (item.json.title || \"\").toLowerCase();\n  if (exceptions.some(term => title.includes(term))) return true;\n  return !excluded.some(term => title.includes(term));\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        0
+      ],
+      "id": "c99ce24c-0ce5-402c-9a8b-3bf7ab421726",
+      "name": "Title Pre-Filter"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Representative demo only. Production workflow uses a broader city/country rule set.\nconst keep = [\"canada\", \"toronto\", \"montreal\", \"montréal\", \"vancouver\", \"remote\", \"not specified\"];\nconst drop = [\"united states\", \"usa\", \"new york\", \"boston\", \"germany\", \"united kingdom\"];\n\nreturn $input.all().filter(item => {\n  const location = (item.json.location || \"not specified\").toLowerCase();\n  if (keep.some(x => location.includes(x))) return true;\n  if (drop.some(x => location.includes(x))) return false;\n  return true; // keep ambiguous listings for later review\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        0
+      ],
+      "id": "956f194e-6816-4266-9779-bf7b3862e427",
+      "name": "Location Filter"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Seen Jobs",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1300,
+        0
+      ],
+      "id": "c6471191-19d9-43fa-b0da-77802d7c68df",
+      "name": "Read Existing URLs",
+      "executeOnce": true,
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const existingRows = $input.all();\n\nconst existingURLs = new Set(\n  existingRows\n    .map(row => (row.json.URL || row.json.url || '').trim())\n    .filter(url => url.length > 0)\n);\n\nconst existingTitles = new Set(\n  existingRows\n    .map(row => {\n      const company = (row.json.Company || row.json.company || '').trim().toLowerCase();\n      const title = (row.json.Title || row.json.title || '').trim().toLowerCase();\n      return company + '|' + title;\n    })\n    .filter(key => key !== '|')\n);\n\nconst incomingJobs = $('Location Filter').all();\n\nreturn incomingJobs.filter(item => {\n  const url = (item.json.url || '').trim();\n  const company = (item.json.company || '').trim().toLowerCase();\n  const title = (item.json.title || '').trim().toLowerCase();\n  const titleKey = company + '|' + title;\n  return !existingURLs.has(url) && !existingTitles.has(titleKey);\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        0
+      ],
+      "id": "7ea368c7-3a96-40f5-babf-0e718b906d5d",
+      "name": "Deduplicate"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const job = $json;\nconst cv = job.cv_graph;\n\nconst prompt = `You are a career matching assistant. Evaluate capability fit, not title similarity.\n\nRules:\n- Use only evidence in CANDIDATE.\n- Look for functional equivalence and transferable capability.\n- Be honest about genuine gaps.\n- Return ONLY valid JSON using the schema below.\n\n{\n  \"match_score\": 0.0,\n  \"fit_level\": \"strong | medium | weak\",\n  \"recommendation\": \"apply | consider | skip\",\n  \"overlap_skills\": [],\n  \"missing_skills\": [],\n  \"transferable_strengths\": [],\n  \"risk_factors\": [],\n  \"bridge_narrative\": \"\",\n  \"summary\": \"\"\n}\n\nCANDIDATE:\n${JSON.stringify(cv)}\n\nROLE:\nTITLE: ${job.title}\nCOMPANY: ${job.company}\nDESCRIPTION: ${job.description}`;\n\nreturn {\n  json: {\n    company: job.company,\n    title: job.title,\n    url: job.url,\n    haikuBody: JSON.stringify({\n      model: \"claude-haiku-4-5-20251001\",\n      max_tokens: 1200,\n      messages: [{ role: \"user\", content: prompt }]\n    })\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        0
+      ],
+      "id": "40265adc-0b13-460f-a44d-3864d6ebebde",
+      "name": "Build Prompt",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-api-key",
+              "value": "YOUR_ANTHROPIC_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.haikuBody }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1900,
+        0
+      ],
+      "id": "4853d7cd-81b8-4162-8d9d-da7de0e9d8a7",
+      "name": "Call Haiku",
+      "executeOnce": false,
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const content = $json.content?.[0]?.text || '';\n\nconst cleaned = content\n  .replace(/```json\\n?/g, '')\n  .replace(/```\\n?/g, '')\n  .trim();\n\nlet result;\ntry {\n  result = JSON.parse(cleaned);\n} catch (e) {\n  return {\n    json: {\n      company: $('Build Prompt').item.json.company,\n      title: $('Build Prompt').item.json.title,\n      url: $('Build Prompt').item.json.url,\n      match_score: 0,\n      fit_level: 'unknown',\n      recommendation: 'skip',\n      summary: 'Parse error - could not read model response',\n      overlap_skills: '',\n      missing_skills: '',\n      transferable_strengths: '',\n      risk_factors: '',\n      bridge_narrative: '',\n      date: new Date().toISOString().split('T')[0]\n    }\n  };\n}\n\nreturn {\n  json: {\n    company: $('Build Prompt').item.json.company,\n    title: $('Build Prompt').item.json.title,\n    url: $('Build Prompt').item.json.url,\n    match_score: result.match_score,\n    fit_level: result.fit_level,\n    recommendation: result.recommendation,\n    bridge_narrative: result.bridge_narrative || '',\n    summary: result.summary,\n    overlap_skills: (result.overlap_skills || []).join(', '),\n    missing_skills: (result.missing_skills || []).join(', '),\n    transferable_strengths: (result.transferable_strengths || []).join(', '),\n    risk_factors: (result.risk_factors || []).join(', '),\n    date: new Date().toISOString().split('T')[0]\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2100,
+        0
+      ],
+      "id": "e29e17ee-096b-4ed7-a1ca-434298338dce",
+      "name": "Parse Response"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Seen Jobs",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "URL": "={{ $json.url }}",
+            "Company": "={{ $json.company }}",
+            "Title": "={{ $json.title }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "URL",
+              "displayName": "URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2300,
+        -150
+      ],
+      "id": "bdc7fbd9-6ddd-4fbf-b971-358bf76e8281",
+      "name": "Write to Seen Jobs",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.filter(item => {\n  const score = item.json.match_score || 0;\n  const recommendation = item.json.recommendation || 'skip';\n  return score >= 0.55 || recommendation !== 'skip';\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2300,
+        50
+      ],
+      "id": "38c00d7f-e3f5-476f-bf23-5f7efabe58e8",
+      "name": "Filter by Score"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Matches",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $json.date }}",
+            "Company": "={{ $json.company }}",
+            "Title": "={{ $json.title }}",
+            "URL": "={{ $json.url }}",
+            "Match Score": "={{ $json.match_score }}",
+            "Fit Level": "={{ $json.fit_level }}",
+            "Recommendation": "={{ $json.recommendation }}",
+            "Summary": "={{ $json.summary }}",
+            "Overlap Skills": "={{ $json.overlap_skills }}",
+            "Missing Skills": "={{ $json.missing_skills }}",
+            "Risk Factors": "={{ $json.risk_factors }}",
+            "Bridge Narrative": "={{ $json.bridge_narrative }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "URL",
+              "displayName": "URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Match Score",
+              "displayName": "Match Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Fit Level",
+              "displayName": "Fit Level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Recommendation",
+              "displayName": "Recommendation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Overlap Skills",
+              "displayName": "Overlap Skills",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Missing Skills",
+              "displayName": "Missing Skills",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Risk Factors",
+              "displayName": "Risk Factors",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Bridge Narrative",
+              "displayName": "Bridge Narrative",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Applied",
+              "displayName": "Applied",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2500,
+        0
+      ],
+      "id": "d878f5a4-f12b-4f2f-9fad-92dcb6e6f081",
+      "name": "Write to Sheets",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "=New job matches — {{ $now.format('MMMM D, YYYY') }}",
+        "emailType": "text",
+        "message": "={{ $input.all().map(item =>    `🏢 ${item.json.company} — ${item.json.title} 📊 Score: ${item.json.match_score} | ${item.json.fit_level} | ${item.json.recommendation} 🔗 ${item.json.url} 💬 ${item.json.summary} ---` ).join('\\n\\n') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2500,
+        150
+      ],
+      "id": "0b0e341d-5ca0-424c-b7b6-6c10120d661f",
+      "name": "Email Digest",
+      "executeOnce": true,
+      "disabled": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Candidate Profile (Demo)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Candidate Profile (Demo)": {
+      "main": [
+        [
+          {
+            "node": "Lever API - Example Source",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Greenhouse - Example Company",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Browserless - Example JS Site",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lever API - Example Source": {
+      "main": [
+        [
+          {
+            "node": "Normalize - Lever",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Greenhouse - Example Company": {
+      "main": [
+        [
+          {
+            "node": "Greenhouse Fetch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Greenhouse Fetch": {
+      "main": [
+        [
+          {
+            "node": "Normalize - Greenhouse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Browserless - Example JS Site": {
+      "main": [
+        [
+          {
+            "node": "Normalize - Browserless",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize - Lever": {
+      "main": [
+        [
+          {
+            "node": "Merge API Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize - Greenhouse": {
+      "main": [
+        [
+          {
+            "node": "Merge API Sources",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge API Sources": {
+      "main": [
+        [
+          {
+            "node": "Merge + Browserless",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize - Browserless": {
+      "main": [
+        [
+          {
+            "node": "Merge + Browserless",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge + Browserless": {
+      "main": [
+        [
+          {
+            "node": "Attach Profile + Basic Cleanup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Profile + Basic Cleanup": {
+      "main": [
+        [
+          {
+            "node": "Title Pre-Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Title Pre-Filter": {
+      "main": [
+        [
+          {
+            "node": "Location Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Location Filter": {
+      "main": [
+        [
+          {
+            "node": "Read Existing URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Existing URLs": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate": {
+      "main": [
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt": {
+      "main": [
+        [
+          {
+            "node": "Call Haiku",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Haiku": {
+      "main": [
+        [
+          {
+            "node": "Parse Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Response": {
+      "main": [
+        [
+          {
+            "node": "Write to Seen Jobs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter by Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter by Score": {
+      "main": [
+        [
+          {
+            "node": "Write to Sheets",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "America/Toronto",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "1cfdc1bf-e63f-4a34-a220-2dfd6bd5df17",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
