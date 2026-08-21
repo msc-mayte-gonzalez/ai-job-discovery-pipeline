@@ -9,3 +9,7 @@ I built it with **n8n, Claude, Browserless, APIs, Google Sheets, and Gmail** to 
 This repository contains a **sanitized representative version** of the workflow.
 
 The production system monitors 41 career sites across multiple ATS platforms. The public demo includes only a small subset of integrations to show the core architecture, filtering logic, AI matching, and output flow without publishing the full production implementation.
+
+## Workflow overview
+
+![n8n workflow overview](Workflow-overview.png)
