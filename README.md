@@ -52,7 +52,7 @@ I built this system using **Claude as a coding and debugging collaborator**.
 
 I defined the problem, workflow architecture, filtering rules, edge cases, and product decisions, while using Claude to help write and troubleshoot JavaScript, API requests, and n8n logic.
 
-The project became a practical way to extend what I could build without pretending I had skills I didn't yet have.
+The project became a practical way to use AI to extend my technical capabilities and turn an idea into a working system.
 
 ## Limitations and next improvements
 
