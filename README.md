@@ -54,6 +54,19 @@ I defined the problem, workflow architecture, filtering rules, edge cases, and p
 
 The project became a practical way to extend what I could build without pretending I had skills I didn't yet have.
 
+## Limitations and next improvements
+
+This is a working personal system, not a production job-search product.
+
+Current limitations include:
+
+* Career sites can change their APIs or page structure, which can break individual sources.
+* Some sites expose incomplete job descriptions or block automated access entirely.
+* Deterministic filters can occasionally remove a role that might have been worth reviewing.
+* AI fit assessments are useful for prioritization, but they are not treated as final decisions.
+
+If I continued developing it, I would add better source-health monitoring, clearer confidence indicators for incomplete job data, and automated tests for the filtering and parsing logic.
+
 ## Workflow overview
 
 ![n8n workflow overview](Workflow-overview.png)
