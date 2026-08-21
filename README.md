@@ -70,3 +70,9 @@ If I continued developing it, I would add better source-health monitoring, clear
 ## Workflow overview
 
 ![n8n workflow overview](Workflow-overview.png)
+
+## Sample output
+
+The workflow writes structured match assessments to Google Sheets for quick review.
+
+![Sample job match output](sample-output.png)
